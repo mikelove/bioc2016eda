@@ -1,0 +1,12 @@
+---
+title: "RNA-seq low level EDA"
+output:
+  html_document:
+  toc: true
+---
+
+```{r}
+plot(1:10)
+```
+
+
