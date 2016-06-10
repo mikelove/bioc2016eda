@@ -7,7 +7,8 @@ output:
 
 # Gene annotation
 
-We start by looking at two genes, USF2 and CHPF. Let's obtain some information on these genes from the *Homo.sapiens* package:
+We start by looking at two genes, USF2 and CHPF. Let's obtain some information on these genes from the *Homo.sapiens* package. We will pull out the 
+transcript ID and name that go along with the gene symbols.
 
 ```{r}
 library(Homo.sapiens)
@@ -18,6 +19,14 @@ g[["CHPF"]] <- select(Homo.sapiens, "CHPF", c("TXID","TXNAME"), "SYMBOL")
 g
 ```
 
+We can use a *TxDb* object to get the exons for the transcripts
+of these two genes. The *exonsBy* function returns a *GRangesList*
+object, and by specifying `by="tx"`, within this *GRangesList* 
+we can find the GRanges for each exon of every transcript.
+In `ebt` we have the exons of every transcript, labelled by
+transcript ID. We then use the information from the previous
+chunk to pull out the transcripts of USF2 and CHPF:
+
 ```{r}
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
@@ -27,15 +36,37 @@ usf2 <- ebt[ g[["USF2"]]$TXID ]
 chpf <- ebt[ g[["CHPF"]]$TXID ]
 ```
 
+We can take a look at these:
+
 ```{r}
-usf2.r <- range(unlist(range(usf2)))
-chpf.r <- range(unlist(range(chpf)))
+usf2
+chpf
+```
+
+It will be useful to calculate the total range of the 
+exons of the transcript of each gene:
+
+```{r}
+usf2.r <- range(unlist(usf2))
+chpf.r <- range(unlist(chpf))
+```
+
+Let's now visualize the exons of the transcripts using base R.
+First, let's write a line of code that draws the exons
+of a single transcript of USF2
+
+```{r}
 library(rafalib)
 bigpar()
 nullplot(start(usf2.r),end(usf2.r),0,2)
 segments(start(usf2[[1]]), rep(1,lens[1]), 
            end(usf2[[1]]), rep(1,lens[1]), lwd=3)
 ```
+
+Now, to avoid repeating this code over and over for each
+gene, let's write a general function for drawing the 
+exons of each transcript of a gene, 
+contained in a `GRangeList` x.
 
 ```{r}
 plotGRangesList <- function(x,name) {
