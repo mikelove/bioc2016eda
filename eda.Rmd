@@ -5,6 +5,18 @@ output:
   toc: true
 ---
 
+# Goals of this workshop
+
+* Low-level EDA (exploratory data analysis) of RNA-seq
+* Examine biases affecting paired-end fragments
+
+We will not cover, but you can read about elsewhere:
+
+* Counting RNA-seq reads/fragments in genes
+  * Using, e.g. featureCounts, htseq, or summarizeOverlaps
+  * Or tximport following ultra-fast quantification software, e.g. Sailfish, Salmon, kallisto
+* [Basic differential expression analysis workflow](http://www.bioconductor.org/help/workflows/rnaseqGene/)
+
 # Gene annotation
 
 We start by looking at two genes, USF2 and CHPF. Let's obtain some information on these genes from the *Homo.sapiens* package. We will pull out the 
