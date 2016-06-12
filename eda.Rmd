@@ -70,6 +70,7 @@ of a single transcript of USF2
 ```{r}
 library(rafalib)
 bigpar()
+lens <- length(usf2)
 nullplot(start(usf2.r),end(usf2.r),0,2)
 segments(start(usf2[[1]]), rep(1,lens[1]), 
            end(usf2[[1]]), rep(1,lens[1]), lwd=3)
@@ -93,5 +94,32 @@ plotGRangesList <- function(x,name) {
 }
 plotGRangesList(usf2, "USF2")
 plotGRangesList(chpf, "CHPF")
+```
+
+```{r}
+library(GenomicAlignments)
+bamfiles <- list.files("bams",full=TRUE)
+sortBam(bamfiles[1], destination="sorted")
+indexBam("sorted.bam")
+usf2.r <- keepStandardChromosomes(usf2.r)
+gap <- readGAlignmentPairs("sorted.bam", param=ScanBamParam(which=usf2.r))
+```
+
+```{r}
+cov <- coverage(gap)
+# rename this cov.genome
+cov.genome <- as.integer(cov[usf2.r][["chr19"]])
+pos.genome <- seq(from=start(usf2.r),to=end(usf2.r))
+plot(pos.genome, cov.genome, xlab="position (genome)", ylab="coverage")
+```
+
+```{r}
+m2tx <- mapToTranscripts(as(gap,"GRanges"), usf2)
+cov.tx <- coverage(m2tx)
+bigpar(3,2)
+for (i in seq_along(usf2)) {
+  plot(as.integer(cov.tx[[i]]), xlab="position (tx)", 
+       ylab="coverage", main=names(usf2)[i])
+}
 ```
 
