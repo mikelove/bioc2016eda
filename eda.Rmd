@@ -63,6 +63,8 @@ usf2.r <- range(unlist(usf2))
 chpf.r <- range(unlist(chpf))
 ```
 
+# Plotting gene models
+
 Let's now visualize the exons of the transcripts using base R.
 First, let's write a line of code that draws the exons
 of a single transcript of USF2
@@ -96,6 +98,8 @@ plotGRangesList(usf2, "USF2")
 plotGRangesList(chpf, "CHPF")
 ```
 
+# Reading in alignments
+
 ```{r}
 library(GenomicAlignments)
 bamfiles <- list.files("bams",full=TRUE)
@@ -105,6 +109,8 @@ usf2.r <- keepStandardChromosomes(usf2.r)
 gap <- readGAlignmentPairs("sorted.bam", param=ScanBamParam(which=usf2.r))
 ```
 
+# Computing genomic coverage
+
 ```{r}
 cov <- coverage(gap)
 # rename this cov.genome
@@ -112,6 +118,8 @@ cov.genome <- as.integer(cov[usf2.r][["chr19"]])
 pos.genome <- seq(from=start(usf2.r),to=end(usf2.r))
 plot(pos.genome, cov.genome, xlab="position (genome)", ylab="coverage")
 ```
+
+# Map to transcripts
 
 ```{r}
 m2tx <- mapToTranscripts(as(gap,"GRanges"), usf2)
@@ -122,4 +130,21 @@ for (i in seq_along(usf2)) {
        ylab="coverage", main=names(usf2)[i])
 }
 ```
+
+# Find compatible overlaps
+
+# Fragment start and length plot
+
+This plot is shown in Figure 6 in Evans, S.N., Hower, V., and Pachter, L. [Coverage statistics for sequence census methods](http://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-11-430).
+
+# Common sequences at read starts
+
+# Fragment sequence features
+
+# ShortRead for quality assessment
+
+# FASTQC and Multiqc
+
+
+
 
