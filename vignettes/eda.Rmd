@@ -170,7 +170,7 @@ gap
 
 It's helpful to be able to quickly visualize these alignments,
 and one such summary visualization is to see where the reads 
-fall on the genome. This plot can be made using the `summary`
+fall on the genome. This plot can be made using the `coverage`
 function:
 
 ```{r}
