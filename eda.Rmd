@@ -8,13 +8,18 @@ output:
 # Goals of this workshop
 
 * Low-level EDA (exploratory data analysis) of RNA-seq
-* Examine biases affecting paired-end fragments
+* Examine biases affecting paired-end RNA-seq fragments
 
-We will not cover, but you can read about elsewhere:
+We will **not** cover, but you can read about elsewhere:
 
 * Counting RNA-seq reads/fragments in genes
-  * Using, e.g. featureCounts, htseq, or summarizeOverlaps
-  * Or tximport following ultra-fast quantification software, e.g. Sailfish, Salmon, kallisto
+  * Using, e.g. [featureCounts](http://bioinf.wehi.edu.au/featureCounts/), 
+    [htseq](http://www-huber.embl.de/HTSeq/doc/overview.html), 
+    or [summarizeOverlaps](http://bioconductor.org/packages/GenomicAlignments)
+  * Or [tximport](http://bioconductor.org/packages/tximport) following ultra-fast 
+    quantification software such as [Sailfish](http://www.cs.cmu.edu/~ckingsf/software/sailfish/), 
+    [Salmon](https://combine-lab.github.io/salmon/), or
+    [kallisto](https://pachterlab.github.io/kallisto/)
 * [Basic differential expression analysis workflow](http://www.bioconductor.org/help/workflows/rnaseqGene/)
 
 # Gene annotation
@@ -65,7 +70,7 @@ chpf.r <- range(unlist(chpf))
 
 # Plotting gene models
 
-Let's now visualize the exons of the transcripts using base R.
+Let's now visualize the exons of the transcripts using base R graphics.
 First, let's write a line of code that draws the exons
 of a single transcript of USF2
 
@@ -99,6 +104,14 @@ plotGRangesList(chpf, "CHPF")
 ```
 
 # Reading in alignments
+
+We have four BAM files associated with this workshop, so that we can 
+explore how real RNA-seq fragments look using Bioconductor.
+These four files are associated with GEUVADIS RNA-seq samples, 
+aligned using the [STAR](https://github.com/alexdobin/STAR) read aligner, 
+aligning to hg19. The files contain just a subset of the total reads,
+to limit the disk space required for this workshop. The files contain
+only the reads that overlap the genes USF2 and CHPF.
 
 ```{r}
 library(GenomicAlignments)
