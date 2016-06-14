@@ -14,7 +14,8 @@ vignette: >
 
 # Goals of this workshop
 
-* Low-level EDA (exploratory data analysis) of RNA-seq
+* Low-level EDA (exploratory data analysis) of RNA-seq,
+  using core Bioconductor functions and base R graphics  
 * Examine biases affecting paired-end RNA-seq fragments
 
 We will **not** cover, but you can read about elsewhere:
@@ -83,10 +84,11 @@ sum(width(usf2))
 ```
 
 It will be useful to calculate the total range of the 
-exons of the transcripts of USF2:
+exons of the transcripts of the genes:
 
 ```{r}
 usf2.r <- range(unlist(usf2))
+chpf.r <- range(unlist(chpf))
 ```
 
 # Plotting gene models
@@ -153,7 +155,7 @@ file.exists(bamfiles)
 We did not sort or include an index for these BAM files, 
 so first we must sort and index them. Normally,
 you would sort and index these outside of R
-using, e.g. [samtools](http://www.htslib.org/).
+using, e.g. [Samtools](http://www.htslib.org/).
 
 ```{r}
 for (i in seq_along(bamfiles)) {
@@ -221,7 +223,7 @@ the [Sailfish paper](http://www.ncbi.nlm.nih.gov/pubmed/24752080),
 discussing equivalence classes for read k-mers.
 
 Here we will rename each paired alignment using a 1 or 0
-if it is or is not comptabile with a transcript.
+if it is or is not compatible with a transcript.
 So `1-1-0-0-1` means that a paired alignment is compatible
 with transcripts 1, 2, and 5.
 
@@ -265,7 +267,7 @@ because `mapToTranscripts` does not work on
 *GAlignmentPairs*. Furthermore, from the man page we can read that,
 "A successful mapping occurs when `x` is 
 completely within the `transcripts` range".
-So we will break apart each paired alignement that is
+So we will break apart each paired alignment that is
 compatible with our transcript of interest into a start position and
 an end position, map these positions to transcript 
 coordinates, then rebuild the fragment afterward.
@@ -408,17 +410,115 @@ We can extract transcript sequence with the following lines:
 
 ```{r, message=FALSE}
 library(BSgenome.Hsapiens.UCSC.hg19)
-usf2.seq <- extractTranscriptSeqs(Hsapiens, usf2[3])
-chpf.seq <- extractTranscriptSeqs(Hsapiens, chpf[2])
+usf2.seq <- extractTranscriptSeqs(Hsapiens, usf2[3])[[1]]
+chpf.seq <- extractTranscriptSeqs(Hsapiens, chpf[2])[[1]]
+usf2.seq
+chpf.seq
 ```
 
 # Common sequences at read starts
 
+We can look at, for a single transcript, the sequence beneath the read 
+closest to the 5' end of the transcript. For uniformly distributed
+reads, we would expect to see, for example, all 64 of the 3-mers
+showing up equally:
+
+```{r}
+frags <- readTxFragments(bamfiles[1], usf2[3])
+length(frags) / 4^3
+```
+
+Instead we see some 3-mers are much more common, which leads
+to the vertical lines in the previous plots.
+
+```{r}
+start.seq <- as(Views(usf2.seq, start=start(frags), width=3), "DNAStringSet")
+seq.tab <- table(start.seq)
+sort(seq.tab, decreasing=TRUE)
+```
+
+Likewise, for the 3-mers for the read closest to the 3' end of
+the transcript.
+
+```{r}
+end.seq <- as(Views(usf2.seq, end=end(frags), width=3), "DNAStringSet")
+end.seq <- reverseComplement(end.seq)
+seq.tab <- table(end.seq)
+sort(seq.tab, decreasing=TRUE)
+```
+
+To properly infer the bias at the starts and ends of the 
+fragments, one would need to look over many or all transcripts.
+Such a bias calculation is performed by a number of software
+including Cufflinks, eXpress, Sailfish, Salmon, kallisto and alpine.
+
 # Fragment sequence features
+
+Finally, the last kind of bias we will look into is whether
+the fragment sequence itself has an effect in the distribution
+of fragments on the transcript. We can extract the fragment
+sequence with code similar to the lines above.
+
+```{r}
+frag.seq <- as(Views(usf2.seq, start=start(frags), end(frags)), "DNAStringSet")
+```
+
+We can easily find summaries of the fragment sequence, for
+example, the GC content of the fragments:
+
+```{r}
+frag.gc <- letterFrequency(frag.seq, "GC", as.prob=TRUE)
+plot(density(frag.gc))
+```
+
+Let's calculate what we might expect if fragments
+were distributed uniformly along the transcript:
+
+```{r}
+uniform.gc <- letterFrequencyInSlidingView(usf2.seq, 
+                                           median(width(frags)), 
+                                           "GC", as.prob=TRUE) 
+plot(density(uniform.gc))
+```
+
+Now let's combine these plots, iterating over the different samples
+and coloring by sequencing center:
+
+```{r}
+plot(density(uniform.gc), ylim=c(0,12), lwd=2,
+     xlab="fragment GC content", main="")
+for (i in seq_along(bamfiles)) {
+  frags <- readTxFragments(bamfiles[i], usf2[3])
+  frag.seq <- as(Views(usf2.seq, start=start(frags), end(frags)), "DNAStringSet")
+  frag.gc <- letterFrequency(frag.seq, "GC", as.prob=TRUE)
+  lines(density(frag.gc), col=samples$center[i], lwd=2)
+}
+```
+
+To summarize this plot, it's clear that the samples from one
+of the sequencing center have much less representation 
+than the other sequencing center in the range of 0.65-0.75
+GC content.
+
+Again, in order to properly calculate this bias, one 
+would need to look over many of all transcripts, and 
+to adjust for the potentially confounding effect
+of the read start sequence bias. Such a calculation
+is performed by the alpine software.
 
 # Other QA software
 
-* [ShortRead](http://bioconductor.org/packages/ShortRead) for quality assessment
-* [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and 
-  [MultiQC](http://multiqc.info/)
+* Within Bioconductor, there is the 
+  [ShortRead](http://bioconductor.org/packages/ShortRead) package with the 
+  `qa` function for quality assessment
+* I strongly recommend using  
+  the [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) software
+  to generate QC reports, followed by the [MultiQC](http://multiqc.info/)
+  software to aggregate statistics across multiple samples.
+
+# Session Information
+
+```{r}
+sessionInfo()
+```
 
