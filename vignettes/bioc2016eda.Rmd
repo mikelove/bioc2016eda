@@ -1,8 +1,12 @@
 ---
-title: "RNA-seq low level EDA"
-output:
-  html_document:
-  toc: true
+title: "Bioc2016: RNA-seq EDA"
+author: "Michael Love"
+date: "26 June 2016"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Low-level exploratory data analysis and methods development for RNA-seq}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 # Goals of this workshop
@@ -17,14 +21,17 @@ We will **not** cover, but you can read about elsewhere:
     [htseq](http://www-huber.embl.de/HTSeq/doc/overview.html), 
     or [summarizeOverlaps](http://bioconductor.org/packages/GenomicAlignments)
   * Or [tximport](http://bioconductor.org/packages/tximport) following ultra-fast 
-    quantification software such as [Sailfish](http://www.cs.cmu.edu/~ckingsf/software/sailfish/), 
+    quantification software such as 
+    [Sailfish](http://www.cs.cmu.edu/~ckingsf/software/sailfish/), 
     [Salmon](https://combine-lab.github.io/salmon/), or
     [kallisto](https://pachterlab.github.io/kallisto/)
 * [Basic differential expression analysis workflow](http://www.bioconductor.org/help/workflows/rnaseqGene/)
 
 # Gene annotation
 
-We start by looking at two genes, USF2 and CHPF. Let's obtain some information on these genes from the *Homo.sapiens* package. We will pull out the 
+We start by looking at two genes, USF2 and CHPF. 
+Let's obtain some information on these genes from the 
+*Homo.sapiens* package. We will pull out the 
 transcript ID and name that go along with the gene symbols.
 
 ```{r}
@@ -127,7 +134,6 @@ the experiments can be found by searching using the ERR ID on the
 
 ```{r}
 dir <- system.file("extdata", package="bioc2016eda")
-dir <- "inst/extdata"
 samples <- read.csv(file.path(dir,"samples.csv"))
 samples
 ```

@@ -1,8 +1,8 @@
 Package: bioc2016eda
-Type: Package
-Title: Low-level exploratory data analysis and methods development for RNA-seq
+Title: Bioc2016: RNA-seq EDA
 Version: 0.0.1
 Author: Michael Love (DFCI & HSPH Boston)
-Maintainer: Michael Love <michaelisaiahlove@gmail.com>
-License: 
+Description: Low-level exploratory data analysis and methods development for RNA-seq
+Suggests: knitr, Homo.sapiens, GenomicAlignments
+License: Artistic
 VignetteBuilder: knitr
