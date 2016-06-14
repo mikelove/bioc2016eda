@@ -19,7 +19,7 @@ vignette: >
 
 We will **not** cover, but you can read about elsewhere:
 
-* Counting RNA-seq reads/fragments in genes
+* Counting RNA-seq fragments in genes
     * Using, e.g. [featureCounts](http://bioinf.wehi.edu.au/featureCounts/), 
     [htseq](http://www-huber.embl.de/HTSeq/doc/overview.html), 
     or [summarizeOverlaps](http://bioconductor.org/packages/GenomicAlignments)
@@ -83,11 +83,10 @@ sum(width(usf2))
 ```
 
 It will be useful to calculate the total range of the 
-exons of the transcript of each gene:
+exons of the transcripts of USF2:
 
 ```{r}
 usf2.r <- range(unlist(usf2))
-chpf.r <- range(unlist(chpf))
 ```
 
 # Plotting gene models
@@ -107,7 +106,7 @@ segments(start(usf2[[1]]), rep(1,lens[1]),
 Now, to avoid repeating this code over and over for each
 gene, let's write a general function for drawing the 
 exons of each transcript of a gene, 
-contained in a `GRangeList` x.
+contained in a `GRangesList` x.
 
 ```{r}
 plotGRangesList <- function(x,name="") {
@@ -213,8 +212,13 @@ Note that elements of the query (paired alignments) can be compatible with
 multiple elements in the subject (transcripts). 
 We may therefore want to categorize the paired alignments into *equivalence classes*, 
 defined by the set of transcripts that the alignments are compatible with.
-For more on the idea of equivalence classes see, 
-e.g. the [Sailfish paper](http://www.ncbi.nlm.nih.gov/pubmed/24752080).
+An early proposal for collapsing RNA-seq reads 
+into equivalence classes can be found in 
+[Statistical Modeling of RNA-Seq Data](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3846358/)
+by Salzman, J., Jiang, H., and Wong, W.H.
+Another reference on the use of equivalence classes for RNA-seq data is 
+the [Sailfish paper](http://www.ncbi.nlm.nih.gov/pubmed/24752080),
+discussing equivalence classes for read k-mers.
 
 Here we will rename each paired alignment using a 1 or 0
 if it is or is not comptabile with a transcript.
@@ -244,17 +248,31 @@ not compatible with transcript 1, 4, or 5.
 # Map to transcripts
 
 Another useful operation is to map from genomic coordinates to 
-transcript coordinates. To do this, we have to map 
-the start and end of each fragment separately, 
+transcript coordinates. Note that, if we only wanted to 
+have transcript alignments from the start, we could have used
+software such as [RSEM](http://deweylab.github.io/RSEM/) or 
+[RapMap](https://github.com/COMBINE-lab/RapMap) to produce
+a BAM file contain *transcriptome* alignments. 
+Such a file will necessarily contain, for many pairs, 
+the alignment of the paired reads to the many isoforms of a gene
+with which it is compatible. The genomic alignment file
+will only contain multiple alignments for pairs when they 
+are at different *genomic* loci.
+
+To map our genomic coordinates to transcript coordinates,
+we have to map the start and end of each fragment separately, 
 because `mapToTranscripts` does not work on
-*GAlignmentPairs*. Furthermore, from the help page,
+*GAlignmentPairs*. Furthermore, from the man page we can read that,
 "A successful mapping occurs when `x` is 
 completely within the `transcripts` range".
 So we will break apart each paired alignement that is
-compatible with transcript 3 into a start position and
+compatible with our transcript of interest into a start position and
 an end position, map these positions to transcript 
 coordinates, then rebuild the fragment afterward.
 
+We don't keep track of strand in this example, 
+but one could do this simply by taking care of the
+plus and minus strand fragments separately.
 
 ```{r}
 idx <- queryHits(fco)[subjectHits(fco) == 3]
@@ -265,34 +283,134 @@ m2tx.start <- mapToTranscripts(resize(gr, width=1),
 m2tx.start
 ```
 
+Now we do the same for the ends as we did for the starts,
+mapping them to the transcript coordinates. 
+We then create a *GRanges* in the transcript coordinate
+space, using the starts and ends of the paired alignments.
+
 ```{r}
 m2tx.end <- mapToTranscripts(resize(gr, width=1, fix="end"), 
                              usf2[3], ignore.strand=TRUE)
-common <- intersect(m2tx.start$xHits, m2tx.end$xHits)
-m2tx <- GRanges(rep("66828"), 
-                IRanges(start(m2tx.start[m2tx.start$xHits %in% common]),
-                        start(m2tx.end[m2tx.end$xHits %in% common])))
+m2tx <- GRanges(seqnames(m2tx.start), IRanges(start(m2tx.start),start(m2tx.end)))
+m2tx
 ```
 
-**TODO** now turn this into a function!
-
-We can then compute transcript coverage:
+It will be convenient to turn this set of operations into 
+a function so we can repeat the operation for a generic
+BAM file and transcript.
 
 ```{r}
-cov.tx <- coverage(m2tx)
-plot(as.integer(cov.tx[[1]]), xlab="position (tx)", 
-     ylab="coverage", main=names(usf2)[3])
+readTxFragments <- function(file, transcript) {
+  r <- range(transcript[[1]])
+  r <- keepStandardChromosomes(r)
+  # suppress warnings about alignments with ambiguous pairing
+  suppressWarnings({ 
+    gap <- readGAlignmentPairs(file, param=ScanBamParam(which=r))
+  })
+  fco <- findCompatibleOverlaps(gap, transcript)
+  idx <- queryHits(fco)
+  gr <- as(gap[idx],"GRanges")
+  strand(gr) <- "*"
+  m2tx.start <- mapToTranscripts(resize(gr, width=1), 
+                                 transcript, ignore.strand=TRUE)
+  m2tx.end <- mapToTranscripts(resize(gr, width=1, fix="end"), 
+                               transcript, ignore.strand=TRUE)
+  m2tx <- GRanges(seqnames(m2tx.start), IRanges(start(m2tx.start),start(m2tx.end)))
+  m2tx
+}
+```
+
+We can then compute transcript coverage for the different files.
+We color the coverage by the sequencing center to identify
+differences in coverage that correlate.
+
+```{r}
+mypar()
+nullplot(0,1600,0,900,xlab="position (tx)",ylab="coverage")
+for (i in seq_along(bamfiles)) {
+  frags <- readTxFragments(bamfiles[i], usf2[3])
+  cov.tx <- coverage(frags)
+  lines(as.integer(cov.tx[[1]]), col=samples$center[i], lwd=2)
+}
+```
+
+And the same for the second transcript of CHPF:
+
+```{r}
+mypar()
+nullplot(0,3100,0,150,xlab="position (tx)",ylab="coverage")
+for (i in seq_along(bamfiles)) {
+  frags <- readTxFragments(bamfiles[i], chpf[2])
+  cov.tx <- coverage(frags)
+  lines(as.integer(cov.tx[[1]]), col=samples$center[i], lwd=2)
+}
 ```
 
 # Fragment length distribution
 
+Once we have our fragments in the transcript coordinates
+it is easy to observe the fragment length distribution.
+For a more comprehensive view, obviously one would want to take
+fragments from many or all genes.
+
 ```{r}
-hist(width(m2tx))
+frags <- readTxFragments(bamfiles[1], usf2[3])
+hist(width(frags), col="grey", border="white")
 ```
 
 # Fragment start and length plot
 
-This plot is shown in Figure 6 in Evans, S.N., Hower, V., and Pachter, L. [Coverage statistics for sequence census methods](http://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-11-430).
+A density plot of fragment length over fragment start 
+was proposed by Evans, S.N., Hower, V., and Pachter, L. 
+[Coverage statistics for sequence census methods](http://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-11-430)
+and can be seen in Figure 6 in that reference.
+This plot is useful for reminding us that RNA-seq data is 2-dimensional,
+and for observing a bias affecting both the fragment starts (fragment position closest
+to transcript 5') and the ends (closest to transcript 3').
+We can see the bias as vertical and downward-sloping 45 degree
+lines. We use transparency to allow overplotting at the same
+or nearby locations in the (start,length) plane.
+
+```{r}
+mypar(4,1,mar=c(2,2,1,1))
+for (f in bamfiles) {
+  frags <- readTxFragments(f, usf2[3])
+  plot(start(frags), width(frags),
+       xlim=c(200,1300), ylim=c(50,400),
+       pch=15, col=rgb(0,0,0,.2), cex=.5, 
+       xlab="", ylab="")
+}
+```
+
+For CHPF it is more difficult to see the pattern,
+as the coverage is lower:
+
+```{r}
+mypar(4,1,mar=c(2,2,1,1))
+for (f in bamfiles) {
+  frags <- readTxFragments(f, chpf[2])
+  plot(start(frags), width(frags),
+       xlim=c(0,3000), ylim=c(50,400),
+       pch=15, col=rgb(0,0,0,.2), cex=.5, 
+       xlab="", ylab="")
+}
+```
+
+# Extract transcript sequence
+
+Up until this point, we have not yet taken a look at the 
+transcript sequence. In order to see if the distribution
+of paired alignments is correlated with sequence features, 
+we will need to extract the transcript sequence.
+Again, we will focus on the third transcript of
+USF2 and the second of CHPF.
+We can extract transcript sequence with the following lines:
+
+```{r, message=FALSE}
+library(BSgenome.Hsapiens.UCSC.hg19)
+usf2.seq <- extractTranscriptSeqs(Hsapiens, usf2[3])
+chpf.seq <- extractTranscriptSeqs(Hsapiens, chpf[2])
+```
 
 # Common sequences at read starts
 
@@ -303,8 +421,4 @@ This plot is shown in Figure 6 in Evans, S.N., Hower, V., and Pachter, L. [Cover
 * [ShortRead](http://bioconductor.org/packages/ShortRead) for quality assessment
 * [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and 
   [MultiQC](http://multiqc.info/)
-
-
-
-
 
