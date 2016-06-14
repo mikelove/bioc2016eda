@@ -2,7 +2,10 @@
 title: "Bioc2016: RNA-seq EDA"
 author: "Michael Love"
 date: "26 June 2016"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    fig_width: 5
+    fig_height: 5
 vignette: >
   %\VignetteIndexEntry{Low-level exploratory data analysis and methods development for RNA-seq}
   %\VignetteEngine{knitr::rmarkdown}
@@ -17,10 +20,10 @@ vignette: >
 We will **not** cover, but you can read about elsewhere:
 
 * Counting RNA-seq reads/fragments in genes
-  * Using, e.g. [featureCounts](http://bioinf.wehi.edu.au/featureCounts/), 
+    * Using, e.g. [featureCounts](http://bioinf.wehi.edu.au/featureCounts/), 
     [htseq](http://www-huber.embl.de/HTSeq/doc/overview.html), 
     or [summarizeOverlaps](http://bioconductor.org/packages/GenomicAlignments)
-  * Or [tximport](http://bioconductor.org/packages/tximport) following ultra-fast 
+    * Or [tximport](http://bioconductor.org/packages/tximport) following ultra-fast 
     quantification software such as 
     [Sailfish](http://www.cs.cmu.edu/~ckingsf/software/sailfish/), 
     [Salmon](https://combine-lab.github.io/salmon/), or
@@ -34,9 +37,12 @@ Let's obtain some information on these genes from the
 *Homo.sapiens* package. We will pull out the 
 transcript ID and name that go along with the gene symbols.
 
-```{r}
+```{r, message=FALSE}
 library(Homo.sapiens)
 columns(Homo.sapiens)
+```
+
+```{r}
 g <- list()
 g[["USF2"]] <- select(Homo.sapiens, "USF2", c("TXID","TXNAME"), "SYMBOL")
 g[["CHPF"]] <- select(Homo.sapiens, "CHPF", c("TXID","TXNAME"), "SYMBOL")
@@ -92,7 +98,6 @@ of a single transcript of USF2:
 
 ```{r}
 library(rafalib)
-bigpar()
 lens <- length(usf2)
 nullplot(start(usf2.r),end(usf2.r),0,2)
 segments(start(usf2[[1]]), rep(1,lens[1]), 
@@ -140,7 +145,7 @@ samples
 
 We create a vector that points to these files on disk.
 
-```{r}
+```{r, message=FALSE}
 library(GenomicAlignments)
 bamfiles <- file.path(dir,paste0(samples$run,".bam"))
 file.exists(bamfiles)
@@ -269,6 +274,8 @@ m2tx <- GRanges(rep("66828"),
                         start(m2tx.end[m2tx.end$xHits %in% common])))
 ```
 
+**TODO** now turn this into a function!
+
 We can then compute transcript coverage:
 
 ```{r}
@@ -293,8 +300,9 @@ This plot is shown in Figure 6 in Evans, S.N., Hower, V., and Pachter, L. [Cover
 
 # Other QA software
 
-* ShortRead for quality assessment
-* FASTQC and Multiqc
+* [ShortRead](http://bioconductor.org/packages/ShortRead) for quality assessment
+* [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and 
+  [MultiQC](http://multiqc.info/)
 
 
 

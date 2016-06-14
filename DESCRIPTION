@@ -3,6 +3,6 @@ Title: Bioc2016: RNA-seq EDA
 Version: 0.0.1
 Author: Michael Love (DFCI & HSPH Boston)
 Description: Low-level exploratory data analysis and methods development for RNA-seq
-Suggests: knitr, Homo.sapiens, GenomicAlignments
+Suggests: knitr, Homo.sapiens, GenomicAlignments, rafalib
 License: Artistic
 VignetteBuilder: knitr
