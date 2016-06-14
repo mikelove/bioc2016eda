@@ -273,7 +273,7 @@ compatible with our transcript of interest into a start position and
 an end position, map these positions to transcript 
 coordinates, then rebuild the fragment afterward.
 
-We don't keep track of strand in this example, 
+We don't keep track of fragment strand in this example, 
 but one could do this simply by taking care of the
 plus and minus strand fragments separately.
 
@@ -281,8 +281,7 @@ plus and minus strand fragments separately.
 idx <- queryHits(fco)[subjectHits(fco) == 3]
 gr <- as(gap[idx],"GRanges")
 strand(gr) <- "*"
-m2tx.start <- mapToTranscripts(resize(gr, width=1), 
-                               usf2[3], ignore.strand=TRUE)
+m2tx.start <- mapToTranscripts(resize(gr, width=1, fix="start"), usf2[3])
 m2tx.start
 ```
 
@@ -291,10 +290,16 @@ mapping them to the transcript coordinates.
 We then create a *GRanges* in the transcript coordinate
 space, using the starts and ends of the paired alignments.
 
+The following code works for a plus strand transcript,
+because the position of the fragment given by `start` 
+(the left-most position of the range) is to the left
+in the transcript coordinates as well.
+For a minus strand transcript, we would have to reverse these.
+
 ```{r}
-m2tx.end <- mapToTranscripts(resize(gr, width=1, fix="end"), 
-                             usf2[3], ignore.strand=TRUE)
-m2tx <- GRanges(seqnames(m2tx.start), IRanges(start(m2tx.start),start(m2tx.end)))
+m2tx.end <- mapToTranscripts(resize(gr, width=1, fix="end"), usf2[3])
+m2tx <- GRanges(seqnames(m2tx.start), 
+                IRanges(start(m2tx.start),start(m2tx.end)))
 m2tx
 ```
 
@@ -314,11 +319,18 @@ readTxFragments <- function(file, transcript) {
   idx <- queryHits(fco)
   gr <- as(gap[idx],"GRanges")
   strand(gr) <- "*"
-  m2tx.start <- mapToTranscripts(resize(gr, width=1), 
-                                 transcript, ignore.strand=TRUE)
+  m2tx.start <- mapToTranscripts(resize(gr, width=1, fix="start"), 
+                                 transcript)
   m2tx.end <- mapToTranscripts(resize(gr, width=1, fix="end"), 
-                               transcript, ignore.strand=TRUE)
-  m2tx <- GRanges(seqnames(m2tx.start), IRanges(start(m2tx.start),start(m2tx.end)))
+                               transcript)
+  tx.strand <- as.character(strand(transcript)[[1]][1])
+  if (tx.strand == "+") {
+    m2tx <- GRanges(seqnames(m2tx.start), 
+                    IRanges(start(m2tx.start),start(m2tx.end)))
+  } else {
+    m2tx <- GRanges(seqnames(m2tx.start), 
+                    IRanges(start(m2tx.end),start(m2tx.start)))   
+  }
   m2tx
 }
 ```
@@ -490,7 +502,8 @@ plot(density(uniform.gc), ylim=c(0,12), lwd=2,
      xlab="fragment GC content", main="")
 for (i in seq_along(bamfiles)) {
   frags <- readTxFragments(bamfiles[i], usf2[3])
-  frag.seq <- as(Views(usf2.seq, start=start(frags), end(frags)), "DNAStringSet")
+  frag.seq <- as(Views(usf2.seq, start=start(frags), end(frags)), 
+                 "DNAStringSet")
   frag.gc <- letterFrequency(frag.seq, "GC", as.prob=TRUE)
   lines(density(frag.gc), col=samples$center[i], lwd=2)
 }
@@ -512,9 +525,10 @@ is performed by the alpine software.
 * Within Bioconductor, there is the 
   [ShortRead](http://bioconductor.org/packages/ShortRead) package with the 
   `qa` function for quality assessment
-* I strongly recommend using  
-  the [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) software
-  to generate QC reports, followed by the [MultiQC](http://multiqc.info/)
+* I strongly recommend using the 
+  [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) 
+  software to generate QC reports, followed by the 
+  [MultiQC](http://multiqc.info/)
   software to aggregate statistics across multiple samples.
 
 # Session Information
